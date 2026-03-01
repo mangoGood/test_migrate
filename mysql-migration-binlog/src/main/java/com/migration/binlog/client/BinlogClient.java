@@ -31,6 +31,7 @@ public class BinlogClient {
     private volatile boolean running = false;
     private BinlogPosition currentPosition;
     private BinlogPosition startPosition;
+    private String currentGtid;
 
     private List<BinlogEventListener> listeners = new CopyOnWriteArrayList<>();
     private BinlogEventFilter eventFilter;
@@ -86,6 +87,11 @@ public class BinlogClient {
 
         binaryLogClient = new BinaryLogClient(host, port, username, password);
 
+        // 设置唯一的 server_id，避免冲突
+        long serverId = generateUniqueServerId();
+        binaryLogClient.setServerId(serverId);
+        logger.info("设置 Binlog 客户端 server_id: {}", serverId);
+
         // 设置开始位置
         if (startPosition != null) {
             binaryLogClient.setBinlogFilename(startPosition.getFilename());
@@ -130,6 +136,19 @@ public class BinlogClient {
     }
 
     /**
+     * 生成唯一的 server_id
+     * 使用时间戳和随机数的组合，确保唯一性
+     */
+    private long generateUniqueServerId() {
+        // 使用当前时间戳的后20位（约100万秒内的唯一性）
+        long timestamp = System.currentTimeMillis() & 0xFFFFF;
+        // 使用随机数的后12位（0-4095）
+        long random = (long) (Math.random() * 4096);
+        // 组合成一个唯一的 server_id（32位以内）
+        return timestamp | (random << 20);
+    }
+
+    /**
      * 停止监听
      */
     public void stop() {
@@ -166,6 +185,12 @@ public class BinlogClient {
                 header.getPosition()
         );
 
+        // 处理 GTID 事件
+        if (eventType == EventType.GTID) {
+            handleGtidEvent((GtidEventData) event.getData());
+            return;
+        }
+
         // 处理表映射事件
         if (eventType == EventType.TABLE_MAP) {
             handleTableMapEvent((TableMapEventData) event.getData());
@@ -178,6 +203,11 @@ public class BinlogClient {
             return;
         }
 
+        // 设置 GTID 到 position
+        if (currentGtid != null && currentPosition != null) {
+            currentPosition.setGtid(currentGtid);
+        }
+
         // 应用过滤器
         if (eventFilter != null && !eventFilter.shouldProcess(binlogEvent)) {
             return;
@@ -185,6 +215,14 @@ public class BinlogClient {
 
         // 通知监听器
         notifyEvent(binlogEvent);
+    }
+
+    /**
+     * 处理 GTID 事件
+     */
+    private void handleGtidEvent(GtidEventData data) {
+        currentGtid = data.getGtid();
+        logger.debug("收到 GTID: {}", currentGtid);
     }
 
     /**

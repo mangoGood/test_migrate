@@ -13,6 +13,7 @@ public class BinlogPosition implements Serializable, Comparable<BinlogPosition> 
     private String filename;
     private long position;
     private long timestamp;
+    private String gtid;
 
     public BinlogPosition() {
         this.timestamp = System.currentTimeMillis();
@@ -21,6 +22,13 @@ public class BinlogPosition implements Serializable, Comparable<BinlogPosition> 
     public BinlogPosition(String filename, long position) {
         this.filename = filename;
         this.position = position;
+        this.timestamp = System.currentTimeMillis();
+    }
+
+    public BinlogPosition(String filename, long position, String gtid) {
+        this.filename = filename;
+        this.position = position;
+        this.gtid = gtid;
         this.timestamp = System.currentTimeMillis();
     }
 
@@ -46,6 +54,14 @@ public class BinlogPosition implements Serializable, Comparable<BinlogPosition> 
 
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public String getGtid() {
+        return gtid;
+    }
+
+    public void setGtid(String gtid) {
+        this.gtid = gtid;
     }
 
     /**
@@ -79,6 +95,10 @@ public class BinlogPosition implements Serializable, Comparable<BinlogPosition> 
 
     @Override
     public String toString() {
+        if (gtid != null && !gtid.isEmpty()) {
+            return String.format("BinlogPosition{filename='%s', position=%d, gtid='%s', timestamp=%d}",
+                    filename, position, gtid, timestamp);
+        }
         return String.format("BinlogPosition{filename='%s', position=%d, timestamp=%d}",
                 filename, position, timestamp);
     }

@@ -2,6 +2,7 @@ package com.migration.full;
 
 import com.migration.config.MigrationConfig;
 import com.migration.db.DatabaseConnection;
+import com.migration.full.checkpoint.CheckpointRecorder;
 import com.migration.full.metadata.MetadataReader;
 import com.migration.full.migration.DataMigration;
 import com.migration.full.migration.SchemaMigration;
@@ -59,6 +60,17 @@ public class Main {
             }
             if (!targetConn.testConnection()) {
                 throw new SQLException("无法连接到目标数据库");
+            }
+
+            // 记录源数据库快照位点（用于增量同步）
+            String checkpointDbPath = config.getCheckpointDbPath();
+            if (checkpointDbPath != null && !checkpointDbPath.isEmpty()) {
+                CheckpointRecorder checkpointRecorder = new CheckpointRecorder(checkpointDbPath);
+                try {
+                    checkpointRecorder.recordSnapshot(sourceConn);
+                } finally {
+                    checkpointRecorder.close();
+                }
             }
 
             // 读取源数据库元数据

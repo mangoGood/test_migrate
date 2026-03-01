@@ -5,6 +5,7 @@ import com.migration.binlog.core.BinlogEvent;
 import com.migration.binlog.core.BinlogPosition;
 import com.migration.binlog.handler.BinlogEventHandler;
 import com.migration.binlog.handler.DdlEventHandler;
+import com.migration.binlog.handler.DirectDmlEventHandler;
 import com.migration.binlog.handler.DmlEventHandler;
 import com.migration.binlog.listener.BinlogEventFilter;
 import com.migration.binlog.listener.BinlogEventListener;
@@ -32,12 +33,19 @@ public class BinlogService {
     private BinlogClient binlogClient;
     private DatabaseConnection sourceConnection;
     private DatabaseConnection targetConnection;
+    private String sqlOutputDirectory;
     private List<BinlogEventHandler> handlers = new CopyOnWriteArrayList<>();
     private List<BinlogEventListener> listeners = new CopyOnWriteArrayList<>();
+    private DmlEventHandler dmlEventHandler;
 
     public BinlogService(DatabaseConnection sourceConnection, DatabaseConnection targetConnection) {
+        this(sourceConnection, targetConnection, null);
+    }
+
+    public BinlogService(DatabaseConnection sourceConnection, DatabaseConnection targetConnection, String sqlOutputDirectory) {
         this.sourceConnection = sourceConnection;
         this.targetConnection = targetConnection;
+        this.sqlOutputDirectory = sqlOutputDirectory;
 
         DatabaseConfig config = sourceConnection.getConfig();
         this.binlogClient = new BinlogClient(
@@ -59,10 +67,23 @@ public class BinlogService {
      * 注册默认的事件处理器
      */
     private void registerDefaultHandlers() {
-        if (targetConnection != null) {
+        if (sqlOutputDirectory != null) {
+            // 如果指定了输出目录，将 SQL 写入文件
+            dmlEventHandler = new DmlEventHandler(sqlOutputDirectory);
+            handlers.add(dmlEventHandler);
+            logger.info("DML 事件将写入目录: {}", sqlOutputDirectory);
+        } else if (targetConnection != null) {
+            // 否则直接执行到目标数据库
             handlers.add(new DdlEventHandler(targetConnection));
-            handlers.add(new DmlEventHandler(targetConnection));
+            handlers.add(new DirectDmlEventHandler(targetConnection));
         }
+    }
+
+    /**
+     * 获取 DML 事件处理器
+     */
+    public DmlEventHandler getDmlEventHandler() {
+        return dmlEventHandler;
     }
 
     /**

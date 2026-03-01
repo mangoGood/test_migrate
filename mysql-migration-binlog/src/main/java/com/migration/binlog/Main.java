@@ -30,8 +30,8 @@ public class Main {
 
             // 加载配置
             MigrationConfig config = new MigrationConfig(configFile);
-            logger.info("源数据库: {}", config.getSourceConfig().getDatabase());
-            logger.info("目标数据库: {}", config.getTargetConfig().getDatabase());
+            logger.info("源数据库: {}", config.getSourceConfig().getHost());
+            logger.info("目标数据库: {}", config.getTargetConfig().getHost());
 
             // 创建数据库连接
             sourceConn = new DatabaseConnection(config.getSourceConfig());
@@ -45,8 +45,15 @@ public class Main {
                 throw new SQLException("无法连接到目标数据库");
             }
 
+            // 获取 SQL 输出目录（从系统属性或环境变量）
+            String sqlOutputDir = System.getProperty("sql.output.dir", System.getenv("SQL_OUTPUT_DIR"));
+            if (sqlOutputDir == null) {
+                sqlOutputDir = "./sql_output";
+            }
+            logger.info("SQL 输出目录: {}", sqlOutputDir);
+
             // 创建并配置 binlog 服务
-            binlogService = new BinlogService(sourceConn, targetConn);
+            binlogService = new BinlogService(sourceConn, targetConn, sqlOutputDir);
             binlogService.setEventFilter(config.getIncludedDatabases(), config.getIncludedTables());
 
             // 启动 binlog 监听

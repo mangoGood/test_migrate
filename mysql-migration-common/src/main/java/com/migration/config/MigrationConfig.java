@@ -20,6 +20,7 @@ public class MigrationConfig {
     private boolean enableIncremental;
     private Set<String> includedDatabases;
     private Set<String> includedTables;
+    private String checkpointDbPath;
 
     public MigrationConfig(String configFile) throws IOException {
         loadConfig(configFile);
@@ -61,6 +62,9 @@ public class MigrationConfig {
         // 加载增量迁移配置
         includedDatabases = parseStringSet(props.getProperty("migration.included.databases", ""));
         includedTables = parseStringSet(props.getProperty("migration.included.tables", ""));
+        
+        // 加载 checkpoint 数据库路径
+        checkpointDbPath = props.getProperty("migration.checkpoint.db.path", "./checkpoint/checkpoint");
     }
     
     /**
@@ -122,5 +126,9 @@ public class MigrationConfig {
     
     public Set<String> getIncludedTables() {
         return includedTables;
+    }
+    
+    public String getCheckpointDbPath() {
+        return checkpointDbPath;
     }
 }

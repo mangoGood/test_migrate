@@ -1,3 +1,5 @@
+com/migration/binlog/handler/DirectDmlEventHandler$1.class
+com/migration/binlog/handler/SqlFileManager.class
 com/migration/binlog/Main.class
 com/migration/binlog/core/BinlogEvent.class
 com/migration/binlog/handler/DdlEventHandler.class
@@ -14,6 +16,7 @@ com/migration/binlog/client/BinlogClient$TableMapInfo.class
 com/migration/binlog/BinlogPosition.class
 com/migration/binlog/listener/BinlogEventListener.class
 com/migration/binlog/core/BinlogEvent$EventData.class
+com/migration/binlog/handler/DirectDmlEventHandler.class
 com/migration/binlog/client/BinlogClient$2.class
 com/migration/binlog/client/BinlogClient.class
 com/migration/binlog/BinlogManager.class

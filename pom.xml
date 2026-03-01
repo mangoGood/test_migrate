@@ -17,6 +17,7 @@
         <module>mysql-migration-common</module>
         <module>mysql-migration-full</module>
         <module>mysql-migration-binlog</module>
+        <module>mysql-migration-increment</module>
     </modules>
 
     <properties>
