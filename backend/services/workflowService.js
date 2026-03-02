@@ -1,0 +1,159 @@
+const Workflow = require('../models/workflow');
+const kafkaService = require('./kafkaService');
+
+// 模拟工作流执行器
+class WorkflowExecutor {
+    constructor() {
+        this.runningWorkflows = new Map();
+    }
+    
+    // 发送任务状态到 Kafka
+    async sendTaskStatusToKafka(workflowId) {
+        try {
+            const workflow = await Workflow.findById(workflowId);
+            if (workflow) {
+                const taskInfo = {
+                    taskName: workflow.name,
+                    taskId: workflow.id,
+                    sourceConnection: workflow.source_connection,
+                    targetConnection: workflow.target_connection,
+                    createTime: workflow.created_at,
+                    executionProgress: workflow.progress || 0,
+                    currentStatus: workflow.status,
+                    updateTime: workflow.updated_at
+                };
+                await kafkaService.sendMessage('sync-task-updates', taskInfo);
+                console.log(`任务 ${workflowId} 状态已发送到 Kafka`);
+            }
+        } catch (error) {
+            console.error('发送任务状态到 Kafka 失败:', error);
+        }
+    }
+    
+    // 启动工作流
+    async startWorkflow(workflowId) {
+        // 检查是否已经在运行
+        if (this.runningWorkflows.has(workflowId)) {
+            return;
+        }
+        
+        // 获取当前工作流信息
+        const workflow = await Workflow.findById(workflowId);
+        if (!workflow) {
+            return;
+        }
+        
+        // 获取当前进度，默认为0
+        const currentProgress = workflow.progress || 0;
+        
+        // 更新状态为运行中，保持当前进度
+        await Workflow.updateStatus(workflowId, 'running', currentProgress);
+        
+        // 记录日志
+        if (currentProgress > 0) {
+            await Workflow.addLog(workflowId, 'info', `工作流从 ${currentProgress}% 开始恢复执行`);
+        } else {
+            await Workflow.addLog(workflowId, 'info', '工作流开始执行');
+        }
+        
+        // 发送状态到 Kafka
+        await this.sendTaskStatusToKafka(workflowId);
+        
+        // 创建工作流执行上下文
+        const workflowContext = {
+            id: workflowId,
+            progress: currentProgress,
+            timer: null
+        };
+        
+        this.runningWorkflows.set(workflowId, workflowContext);
+        
+        // 模拟工作流执行过程
+        this.simulateExecution(workflowId, currentProgress);
+        
+        return workflowContext;
+    }
+    
+    // 模拟执行过程
+    async simulateExecution(workflowId, startProgress = 0) {
+        const stages = [
+            { progress: 10, message: '正在连接源数据库...', delay: 2000 },
+            { progress: 20, message: '正在连接目标数据库...', delay: 2000 },
+            { progress: 30, message: '正在分析表结构...', delay: 3000 },
+            { progress: 40, message: '正在创建同步任务...', delay: 2000 },
+            { progress: 50, message: '正在进行全量同步...', delay: 5000 },
+            { progress: 70, message: '正在进行增量同步...', delay: 4000 },
+            { progress: 90, message: '正在验证数据一致性...', delay: 3000 },
+            { progress: 100, message: '同步任务完成', delay: 1000 }
+        ];
+        
+        // 找到当前进度对应的阶段，从下一个阶段开始
+        let startIndex = 0;
+        for (let i = 0; i < stages.length; i++) {
+            if (stages[i].progress > startProgress) {
+                startIndex = i;
+                break;
+            }
+        }
+        
+        for (let i = startIndex; i < stages.length; i++) {
+            const stage = stages[i];
+            await this.delay(stage.delay);
+            
+            // 检查工作流是否被取消
+            if (!this.runningWorkflows.has(workflowId)) {
+                return;
+            }
+            
+            await Workflow.updateStatus(workflowId, 'running', stage.progress);
+            await Workflow.addLog(workflowId, 'info', stage.message);
+            
+            // 发送状态到 Kafka
+            await this.sendTaskStatusToKafka(workflowId);
+            
+            // 更新上下文
+            const context = this.runningWorkflows.get(workflowId);
+            if (context) {
+                context.progress = stage.progress;
+            }
+        }
+        
+        // 完成工作流
+        await Workflow.updateStatus(workflowId, 'completed', 100);
+        await Workflow.addLog(workflowId, 'info', '工作流执行成功完成');
+        
+        // 发送完成状态到 Kafka
+        await this.sendTaskStatusToKafka(workflowId);
+        
+        // 清理
+        this.runningWorkflows.delete(workflowId);
+    }
+    
+    // 停止工作流
+    async stopWorkflow(workflowId) {
+        const context = this.runningWorkflows.get(workflowId);
+        if (context) {
+            this.runningWorkflows.delete(workflowId);
+            await Workflow.updateStatus(workflowId, 'paused', context.progress);
+            await Workflow.addLog(workflowId, 'warning', '工作流被手动暂停');
+            
+            // 发送暂停状态到 Kafka
+            await this.sendTaskStatusToKafka(workflowId);
+        }
+    }
+    
+    // 延迟函数
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // 获取运行中的工作流
+    getRunningWorkflows() {
+        return Array.from(this.runningWorkflows.keys());
+    }
+}
+
+// 单例模式
+const executor = new WorkflowExecutor();
+
+module.exports = executor;

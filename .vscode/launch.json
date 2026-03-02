@@ -6,6 +6,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "BinlogMain",
+            "request": "launch",
+            "mainClass": "com.migration.binlog.BinlogMain",
+            "projectName": "mysql-migration-binlog"
+        },
+        {
+            "type": "java",
             "name": "MainIncrement",
             "request": "launch",
             "mainClass": "com.migration.increment.MainIncrement",

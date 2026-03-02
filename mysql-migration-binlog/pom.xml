@@ -58,7 +58,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.migration.binlog.Main</mainClass>
+                            <mainClass>com.migration.binlog.BinlogMain</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -77,7 +77,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.migration.binlog.Main</mainClass>
+                                    <mainClass>com.migration.binlog.BinlogMain</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

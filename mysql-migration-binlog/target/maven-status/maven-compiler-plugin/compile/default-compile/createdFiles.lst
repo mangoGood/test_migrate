@@ -1,9 +1,9 @@
 com/migration/binlog/handler/DirectDmlEventHandler$1.class
 com/migration/binlog/handler/SqlFileManager.class
-com/migration/binlog/Main.class
 com/migration/binlog/core/BinlogEvent.class
 com/migration/binlog/handler/DdlEventHandler.class
 com/migration/binlog/handler/BinlogEventHandler.class
+com/migration/binlog/BinlogMain.class
 com/migration/binlog/handler/DmlEventHandler$1.class
 com/migration/binlog/BinlogService.class
 com/migration/binlog/BinlogService$EventDispatcher.class
